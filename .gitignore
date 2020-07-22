@@ -37,3 +37,6 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+ind_proj.Rproj
+Data-analysis-COVID-19.Rproj
