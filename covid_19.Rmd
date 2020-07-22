@@ -26,7 +26,7 @@ library(data.table)
 library(stringr)
 
 library(tidyr)
-data <- read.csv("covid-07-13-2020.csv")
+data <- read.csv("data/covid-07-13-2020.csv")
 ```
 The data contains 30088 responses of people from different age groups, genders, health conditions, and living places. People were asked a different question: whether or not they stayed at home, had any contact with a COVID-19 patient, were tested for the virus, or had any of its symptoms.
 Now, let us take a closer look.
@@ -90,7 +90,7 @@ data %>% ggplot(aes(x=age, fill=gender)) +
 As the research results may be different depending on the group of people answering the survey, it is essential to understand some basic characteristics of the participants. We see from the graph, the majority of the survey participants are female. Moreover, the chart is centered in the middle part of the age axis, which means that most of the participants were from 36 to 65 years old.
 
 ```{r, out.width="100%",fig.width=8 }
-zipcodes<- read.csv("us-zip-code-latitude-and-longitude.csv")
+zipcodes<- read.csv("data/us-zip-code-latitude-and-longitude.csv")
 
 
 colnames(zipcodes) <- c("first")
