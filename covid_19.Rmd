@@ -1,0 +1,273 @@
+---
+title: "Covid 19 and the society"
+author: "Lilit Karapetyan"
+date: "7/11/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, message=F, warning=F, fig.width=4, fig.height=4, out.width = "50%", fig.show = "hold")
+```
+
+The outbreak of Sars-Cov-2, aka COVID-19, started in December 2019; however, it continues spreading until now. Considering the fact that the virus generally lives in the person's organism about 14 days, moreover, the government designed preventive measures and regulations to control the spread of the virus, it becomes evident that the pandemic must've been ended, but it isn't. The research aims to understand society's reaction and actions to the pandemic. 
+The data was retrived from infogears.org (NetGenix Inc.).
+The data is not analyzed yet.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(data.table)
+library(stringr)
+
+library(tidyr)
+data <- read.csv("covid-07-13-2020.csv")
+```
+The data contains 30088 responses of people from different age groups, genders, health conditions, and living places. People were asked a different question: whether or not they stayed at home, had any contact with a COVID-19 patient, were tested for the virus, or had any of its symptoms.
+Now, let us take a closer look.
+
+
+```{r}
+#data cleaning
+data <- data %>% mutate(gender = as.factor(ifelse(gender == 'notWantToShare', 'notShared', as.character(gender))))
+
+data <- data %>% mutate(leftHomeTimes = as.factor(ifelse(leftHomeTimes == 'didNotLeft', 'didNotLeave', as.character(leftHomeTimes))))
+
+data$age <- str_extract(data$ï..age, pattern='[0-9]{2,3}_.{2,}$')
+
+data <- data[ , !(names(data) %in% c('createdAt', 'updatedAt', 'userAgent', 'ï..age'))]
+```
+
+
+```{r}
+# 
+# unique(data$age)
+# unique(data$antibodyTest)
+# unique(data$exposureLevel)
+# unique(data$faceCovering)
+# unique(data$gender)
+# unique(data$healthIssues)
+# unique(data$leftHomeTimes)
+# unique(data$mentalHealthImpact)
+# unique(data$virusTest)
+# 
+# sum(data$bodyAche)
+# sum(data$diarrhea)
+# sum(data$difficultyBreathing)
+# sum(data$disorientation)
+# sum(data$fatigue)
+# sum(data$headAche)
+# sum(data$irritatedEyes)
+# sum(data$leftForExercise)
+# sum(data$leftForOther)
+# sum(data$leftForShopping)
+# sum(data$leftForWork)
+# sum(data$lossOfSmell)
+# sum(data$noSymptoms)
+# sum(data$persistentCough)
+# sum(data$soreThroat)
+# sum(data$temperature)
+
+symptoms <- c('bodyAche', 'diarrhea', 'difficultyBreathing', 'fatigue', 'headAche', 'irritatedEyes', 'lossOfSmell', 'persistentCough', 'soreThroat', 'temperature')
+
+leftHomeReasons <- c('leftForExercise', 'leftForOther', 'leftForShopping', 'leftForWork')
+
+```
+```{r}
+
+data %>% ggplot(aes(x=age, fill=gender)) +
+  geom_bar() +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle=90, hjust=0.95, vjust=0.2))+
+  labs(title="Age/Gender relationship")
+```
+\newline
+As the research results may be different depending on the group of people answering the survey, it is essential to understand some basic characteristics of the participants. We see from the graph, the majority of the survey participants are female. Moreover, the chart is centered in the middle part of the age axis, which means that most of the participants were from 36 to 65 years old.
+
+```{r, out.width="100%",fig.width=8 }
+zipcodes<- read.csv("us-zip-code-latitude-and-longitude.csv")
+
+
+colnames(zipcodes) <- c("first")
+
+zipcodesdata <- zipcodes %>% separate("first", c("zipCode", "City", "state", "long", "lat" ), ";")
+
+temp <- data
+
+merged <- merge(x=temp, y=zipcodesdata, by="zipCode")
+
+grouped <- merged %>% group_by(City) %>% tally()
+
+grouped$City <- factor(grouped$City, levels = grouped$City[order(-grouped$n)])
+
+top10 <- top_n(grouped, 10)
+
+top10 <- rbind(top10, c("", sum(grouped$n) - sum(top10$n)))
+#nrow(top10)
+top10 <- top10 %>% mutate(City = ifelse(is.na(City), "Other", as.character(City)))
+
+top10 %>% ggplot(aes(x=factor(1), y=n, fill=City))+
+  geom_bar(stat='identity') +
+  coord_polar(theta="y")+
+  theme_minimal()+
+  theme(legend.position = "bottom", legend.text = element_text(size=8),
+        axis.text = element_blank(),
+        axis.title = element_blank())+
+  scale_fill_brewer(palette='Set3')
+
+
+```
+After analyzing the distribution of the cities from which people took part in the survey, we see that there are responses from 3041 different cities; however, most of the responses are from North Hollywood, Los Angeles, La Crescenta, Pasadena, and Long Beach. In general, most of the answers are from the top 10 countries, and all of the others form just a little chunk of the data.
+
+One of the possible causes of the pandemic can be not following the law and protective measures. A person may be not adequately informed about what he/she is supposed to do during the outbreak; however, in most cases, people ignore the rules for their comfort. Since the patient's condition's severity depends on his/her immune system, one should not ignore even the mild symptoms because he/she can still be infected and carry the virus.
+
+To understand the symptoms better, let us list the most common symptoms for positive-tested patients.
+The first graph depicts the most common symptoms ordered in a descending order
+The more frequent the symptom is, the closer it's color is to red.
+
+The second graph showes the most common problems of the people who left their houses. As we see, the most common one are also common symptoms for the novel Coronavirus. This means that there is a possibility, that some of the people leaving the house may be infected and potentially will help the spreading of the virus.
+
+```{r}
+dangerScale <- colorRampPalette(c("red","yellow", "green"))
+
+positive <- data[data$virusTest == 'positive',]
+
+positive_temp <- positive %>% summarise_at(symptoms, sum, na.rm = TRUE)
+
+positive_t <- transpose(positive_temp)
+
+positive_t <- cbind(colnames(positive_temp), positive_t, dangerScale(length(symptoms)) )
+
+colnames(positive_t) <- c('Symptom', 'Count', 'Color')
+rownames(positive_t) <- colnames(positive_temp)
+symptoms <- c('bodyAche', 'diarrhea', 'difficultyBreathing', 'fatigue', 'headAche', 'irritatedEyes', 'lossOfSmell', 'persistentCough', 'soreThroat', 'temperature')
+
+positive_t$Symptom <- factor(positive_t$Symptom, levels = positive_t$Symptom[order(-positive_t$Count)])
+positive_t$Color <- dangerScale(length(symptoms))
+
+ggplot(positive_t, aes(x=Symptom, y=Count, fill=Symptom))+
+  geom_histogram(stat='identity')+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle=90, hjust=0.95, vjust=0.2),
+        legend.position = "none")+
+  scale_fill_manual(values=as.character(positive_t$Color), aesthetics = "fill", breaks = waiver())+
+  labs(title="Symptoms of positive-tested patients")
+
+
+LeftHome <- data[!(data$leftHomeTimes == 'didNotLeave'),]
+
+LeftHome_temp <- LeftHome %>% summarise_at(as.character(symptoms), sum, na.rm = TRUE)
+
+LeftHome_t <- transpose(LeftHome_temp)
+
+LeftHome_t <- cbind(colnames(LeftHome_temp), LeftHome_t)
+colnames(LeftHome_t) <- c('Symptom', 'Count')
+rownames(LeftHome_t) <- colnames(LeftHome_temp)
+
+LeftHome_t$Symptom <- factor(LeftHome_t$Symptom, levels = LeftHome_t$Symptom[order(-LeftHome_t$Count)])
+
+
+symptoms <- as.factor(symptoms)
+symptoms <- positive_t$Symptom[order(-positive_t$Count)]
+symptoms <- factor(symptoms, levels = positive_t$Symptom[order(-positive_t$Count)])
+
+symptomColor <- as.factor(positive_t$Color)
+
+tempdf <- data.frame(symptoms, symptomColor)
+tempdf$symptoms <- factor(tempdf$symptoms, levels = positive_t$Symptom[order(-positive_t$Count)])
+
+LeftHome_t <- merge(y=tempdf, x=LeftHome_t, by.x="Symptom", by.y = "symptoms")
+LeftHome_t$symptomColor <- factor(LeftHome_t$symptomColor, levels=as.character(LeftHome_t$symptomColor))
+
+
+ggplot(LeftHome_t, aes(x=Symptom, y=Count, fill=symptomColor))+
+  geom_histogram(stat='identity')+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle=90, hjust=0.95, vjust=0.2),
+        legend.position = "none")+
+  scale_fill_manual(values=as.character(LeftHome_t$symptomColor), aesthetics = "fill", breaks = waiver())+
+  labs(title='Symptoms of the people who went outside')
+
+
+
+```
+
+Almost all countries have rules about staying at home. It becomes crucial in the case of positive-tested patients. Below we have a graph, where we can see that even the patients who have proof about being infected still leave the house for some reason. The good part is that there are more people who stay at home than going out.
+
+```{r, fig.width=8, fig.height=4, out.width="100%"}
+data %>% filter(!(virusTest %in% c('notTested', 'negative'))) %>%
+  ggplot(aes(x = leftHomeTimes, fill=virusTest))+
+  geom_bar() +
+  facet_grid(.~age) +
+  theme(axis.text = element_text(angle = 90)) +
+  labs(title="How many times positive-tested patients left the home", x="How many times a person left the home")
+```
+
+```{r}
+
+temp <- data %>% group_by(leftHomeTimes) %>% tally()
+data %>% ggplot(aes(x=factor(1), fill=leftHomeTimes))+
+  geom_bar(width=1) +
+  coord_polar(theta="y")+
+  theme_minimal()+
+  
+  theme(legend.position = "bottom", legend.text = element_text(size=8, angle=90),
+        axis.text.y = element_blank(),
+        axis.title = element_blank())
+```
+
+From the graph, we see that the vast majority of people left home only ones. The next question that comes to the mind is the reason people left the house.
+
+```{r}
+reason <- data %>% filter(!(leftHomeTimes=='didNotLeave')) %>% 
+  summarise_at(leftHomeReasons, sum, na.rm = TRUE)
+
+reason_t <- transpose(reason)
+reason_t <- cbind(colnames(reason), reason_t)
+
+colnames(reason_t) <- c('Reason', 'Count')
+
+ggplot(reason_t, aes(x=Reason, y=Count, fill=Reason))+
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0)+
+  theme_minimal()+
+  theme(legend.position = "bottom", legend.text = element_text(size=8, angle=90),
+        axis.text.y = element_blank(),
+        axis.title = element_blank())
+
+
+```
+\newline
+After separating the reasons people went outside, we get that most of the people went for shopping. This raises a question about the online market availability and its effectiveness because people leave the house by putting their well-being in danger just to buy the necessary staff.
+```{r}
+  
+temp <- data %>% filter(exposureLevel=='haveDirectContact') %>% group_by(healthIssues) %>% tally()
+temp %>% ggplot(aes(x=healthIssues, y = n, fill=healthIssues))+
+  geom_col()+
+  coord_flip()+
+  #coord_polar(theta="y")+
+  # facet_wrap(~gender)+
+  theme_minimal()+
+  theme(legend.position = "bottom", legend.text = element_text(size=8, angle=90),
+        axis.text.y = element_blank(),
+        axis.title = element_blank())+
+  labs("Direct contact")
+  
+```
+\newline
+Here we see, that people with chronic issues and some other issues had a direct contact with a positive-tested patient, which could be fatal for them.
+```{r}
+temp <- data
+temp$healthIssues <- factor(temp$healthIssues, levels=c("noIssues", "someIssues", "chronicIssues"))
+temp$mentalHealthImpact <- factor(temp$mentalHealthImpact, levels=c("significantImpact", "someImpact", "noImpact"))
+
+temp %>% ggplot(aes(x=healthIssues, fill=mentalHealthImpact)) +
+  geom_bar(position = "fill") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle=90, hjust=0.95, vjust=0.2))+
+  scale_fill_manual(values=c("#FF0000", "#FFFF00", "#00FF00"), aesthetics = "fill", breaks = waiver())
+  # geom_segment( aes(x=leftHomeReasons, xend=leftHomeReasons, y=0, yend=Count))+
+```
+\newline
+Another important result of the outbreak is its mental health imact. From the graph we see, that since the people with health issues in a more risky position for the COVID-19, their mental health suffers more.
+
+The conclusion is that all of us must follow the rules and regulations for our own safty. As we saw from the data, many people do not follow the rules and this can be the reason the pandemic continues. Let's stay safe and keep our loved ones safe.
